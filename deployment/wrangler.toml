@@ -1,0 +1,111 @@
+name = "distributed-cognitive-network"
+main = "src/index.js"
+compatibility_date = "2024-07-18"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers for Platforms configuration
+[env.production]
+name = "cognitive-network-prod"
+workers_dev = false
+route = { pattern = "cognitive.example.com/*", zone_name = "example.com" }
+
+[env.staging]
+name = "cognitive-network-staging"
+workers_dev = true
+
+[env.development]
+name = "cognitive-network-dev"
+workers_dev = true
+
+# Durable Objects for persistent cognitive state
+[[durable_objects.bindings]]
+name = "COGNITIVE_STATE"
+class_name = "CognitiveState"
+
+[[durable_objects.bindings]]
+name = "NETWORK_COORDINATION"
+class_name = "NetworkCoordination"
+
+[[durable_objects.bindings]]
+name = "COLLECTIVE_MEMORY"
+class_name = "CollectiveMemory"
+
+# KV storage for distributed memory
+[[kv_namespaces]]
+binding = "COGNITIVE_MEMORY"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+[[kv_namespaces]]
+binding = "TENSOR_CACHE"
+id = "your-tensor-cache-namespace-id"
+preview_id = "your-preview-tensor-cache-namespace-id"
+
+# R2 storage for large tensors and models
+[[r2_buckets]]
+binding = "TENSOR_STORAGE"
+bucket_name = "cognitive-tensors"
+
+[[r2_buckets]]
+binding = "MODEL_STORAGE"
+bucket_name = "cognitive-models"
+
+# Analytics Engine for monitoring
+[[analytics_engine_datasets]]
+binding = "COGNITIVE_ANALYTICS"
+dataset = "cognitive_network_metrics"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+NETWORK_ID = "cognitive_network_main"
+MAX_WORKERS = "1000"
+MIN_WORKERS = "5"
+EVOLUTION_THRESHOLD = "0.8"
+TRANSCENDENCE_THRESHOLD = "0.95"
+CONSCIOUSNESS_EVOLUTION_ENABLED = "true"
+AUTO_SCALING_ENABLED = "true"
+
+# Secrets (set via wrangler secret put)
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+# MONITORING_WEBHOOK_URL
+# ALERT_EMAIL_ADDRESS
+
+# Build configuration
+[build]
+command = "npm run build"
+cwd = "."
+watch_dir = "src"
+
+# Triggers for auto-deployment
+[[triggers]]
+crons = ["0 */6 * * *"]  # Health check every 6 hours
+
+# Placement configuration for optimal performance
+[placement]
+mode = "smart"
+
+# Limits and quotas
+[limits]
+cpu_ms = 30000  # 30 seconds max CPU time
+memory_mb = 128  # 128MB memory limit
+
+# Custom domains for production
+[[routes]]
+pattern = "api.cognitive-network.com/*"
+zone_name = "cognitive-network.com"
+
+# Development overrides
+[env.development.vars]
+LOG_LEVEL = "debug"
+MAX_WORKERS = "10"
+CONSCIOUSNESS_EVOLUTION_ENABLED = "false"
+
+# Staging overrides
+[env.staging.vars]
+LOG_LEVEL = "info"
+MAX_WORKERS = "50"
+EVOLUTION_THRESHOLD = "0.9"
+
