@@ -1,19 +1,19 @@
-name = "workers-for-platforms-example-project"
+name = "elizoscog-workers-for-platforms"
 main = "src/index.ts"
 compatibility_date = "2024-04-03"
 
 [[ dispatch_namespaces ]]
 binding = "dispatcher"
-namespace = "workers-for-platforms-example-project" # make sure this is the same as the DISPATCH_NAMESPACE_NAME var
+namespace = "elizoscog-workers-for-platforms" # make sure this is the same as the DISPATCH_NAMESPACE_NAME var
 
 [[ d1_databases ]]
 binding = "DB"
-database_name = "workers-for-platforms-example-project"
+database_name = "elizoscog-workers-for-platforms"
 database_id = ""
 preview_database_id = ""
 
 [vars]
-DISPATCH_NAMESPACE_NAME = "workers-for-platforms-example-project"
+DISPATCH_NAMESPACE_NAME = "elizoscog-workers-for-platforms"
 DISPATCH_NAMESPACE_ACCOUNT_ID = ""
 # The necessary secrets are:
 # - DISPATCH_NAMESPACE_API_TOKEN

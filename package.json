@@ -1,7 +1,8 @@
 {
-  "name": "workers-for-platforms-example-project",
+  "name": "elizoscog-workers-for-platforms",
   "version": "1.0.0",
-  "license": "Apache-2.0",
+  "description": "ElizaOS-OpenCog-GnuCash AI-Financial Intelligence deployed on Cloudflare Workers for Platforms",
+  "license": "GPL-2.0",
   "engines": {
     "node": "<20"
   },
@@ -17,7 +18,7 @@
   },
   "scripts": {
     "start": "wrangler dev",
-    "deploy": "wrangler publish",
+    "deploy": "wrangler deploy",
     "lint": "npx eslint ./src",
     "format": "npx prettier --write '**/*.{ts,js,cjs,json}'"
   },
