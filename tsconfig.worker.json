@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "declaration": true,
+    "outDir": "./dist",
+    "noEmit": true,
+    "lib": ["ES2020", "WebWorker"],
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "*.jsx", "*.js"]
+}

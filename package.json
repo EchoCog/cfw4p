@@ -4,14 +4,14 @@
   "description": "ElizaOS-OpenCog-GnuCash AI-Financial Intelligence deployed on Cloudflare Workers for Platforms",
   "license": "GPL-2.0",
   "engines": {
-    "node": "<20"
+    "node": ">=18"
   },
   "devDependencies": {
     "@cloudflare/d1": "^1.4.1",
     "@cloudflare/workers-types": "^4.20240329.0",
     "@typescript-eslint/eslint-plugin": "^5.37.0",
     "@typescript-eslint/parser": "^5.37.0",
-    "better-sqlite3": "^7.6.2",
+    "better-sqlite3": "^11.5.0",
     "eslint": "^8.23.1",
     "typescript": "^4.8.3",
     "wrangler": "^4.25.0"
