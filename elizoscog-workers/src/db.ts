@@ -9,7 +9,7 @@ import {
   DispatchLimits,
   OutboundWorker,
 } from "./types";
-import { ResultOne } from "workers-qb/dist/types/interfaces";
+import { D1ResultOne as ResultOne } from "workers-qb";
 
 export async function Initialize(db: D1QB) {
   const tables: { name: string; schema: string }[] = [

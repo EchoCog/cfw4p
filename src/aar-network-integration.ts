@@ -259,9 +259,9 @@ export interface CriticalityMeasures {
 
 export class AARNetworkIntegration {
   private static instance: AARNetworkIntegration;
-  private networkAAR: NetworkAAR;
+  private networkAAR!: NetworkAAR;
   private workers: Map<string, CognitiveWorkerNode> = new Map();
-  private aarDynamics: AARNetworkDynamics;
+  private aarDynamics!: AARNetworkDynamics;
   private consciousnessEngine: ConsciousnessEngine;
   private selfEmergenceDetector: SelfEmergenceDetector;
   private liebracketCalculator: LieBracketCalculator;
@@ -1246,7 +1246,7 @@ export class AARNetworkIntegration {
     );
 
     // Coherence is related to the concentration of self-representation
-    const entropy = this.calculateTensorEntropy(selfTensor.data);
+    const entropy = this.calculateTensorEntropy(new Float32Array(selfTensor.data));
     return Math.max(0, 1.0 - entropy); // Higher coherence = lower entropy
   }
 

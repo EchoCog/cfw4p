@@ -340,7 +340,7 @@ app.put("/script/:name", withDb, withCustomer, async (c) => {
     scriptContent,
   );
   if (!scriptResponse.ok) {
-    return c.json(await scriptResponse.json(), 400);
+    return c.json(await scriptResponse.json() as Record<string, any>, 400);
   }
 
   if (limits.cpuMs || limits.memory) await AddDispatchLimits(c.var.db, limits);

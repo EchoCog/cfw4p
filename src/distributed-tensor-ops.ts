@@ -3,7 +3,27 @@
  * Enhanced tensor operations for distributed financial intelligence network
  */
 
-import { CognitiveTensor, Tensor, TensorShape } from "./tensor-ops";
+// Basic tensor types
+export interface TensorShape {
+  dimensions: number[];
+  totalSize: number;
+  dims: number[]; // alias for dimensions for compatibility
+  size: number; // alias for totalSize for compatibility
+}
+
+export interface Tensor {
+  data: number[];
+  shape: TensorShape;
+  dtype: "float32" | "float64" | "int32" | "int64";
+}
+
+export interface CognitiveTensor extends Tensor {
+  cognitiveMetadata: {
+    attentionWeights: number[];
+    semanticTags: string[];
+    emergentProperties: Record<string, any>;
+  };
+}
 
 export interface DistributedTensor extends CognitiveTensor {
   workerId: string;
@@ -187,7 +207,7 @@ export class DistributedTensorOperations {
       workerId,
       location,
       timestamp: new Date(),
-      consensusHash: await this.cryptoEngine.generateHash(baseTensor.data),
+      consensusHash: await this.cryptoEngine.generateHash(new Float32Array(baseTensor.data)),
       replicationFactor,
       distributedMetadata: {
         partitionKey: this.generatePartitionKey(workerId, location),
@@ -213,18 +233,18 @@ export class DistributedTensorOperations {
     const id = `tensor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     return {
-      id,
-      shape: { dims: shape, size },
-      data: new Float32Array(size),
-      type: "f32",
-      metadata: {},
-      semanticEmbedding: new Float32Array(Math.min(512, size)),
-      grammarRules: rules,
-      attentionWeights: new Float32Array(shape[0] || 1),
-      contextualState: {
-        temporalWindow: 64,
-        semanticDepth: 8,
-        grammarComplexity: rules.length,
+      shape: { 
+        dims: shape, 
+        size,
+        dimensions: shape,
+        totalSize: size
+      },
+      data: Array.from(new Float32Array(size)),
+      dtype: "float32",
+      cognitiveMetadata: {
+        attentionWeights: Array.from(new Float32Array(shape[0] || 1)),
+        semanticTags: [],
+        emergentProperties: {},
       },
     };
   }
@@ -453,7 +473,7 @@ export class DistributedTensorOperations {
 
     while (currentLevel.parentLevel) {
       const levelResults = await Promise.all(
-        currentLevel.nodes.map((node) => this.computeHierarchicalNode(node)),
+        currentLevel.nodes.map((node: any) => this.computeHierarchicalNode(node)),
       );
 
       currentLevel = currentLevel.parentLevel;
@@ -932,7 +952,7 @@ class CryptographicEngine {
     location: EdgeLocation,
   ): Promise<CryptographicProof> {
     return {
-      hash: await this.generateHash(tensor.data),
+      hash: await this.generateHash(new Float32Array(tensor.data)),
       signature: "simplified_signature",
       merkleRoot: "simplified_merkle_root",
       witnesses: [tensor.workerId],
@@ -945,12 +965,70 @@ class CryptographicEngine {
     participants: string[],
   ): Promise<CryptographicProof> {
     return {
-      hash: await this.generateHash(tensor.data),
+      hash: await this.generateHash(new Float32Array(tensor.data)),
       signature: "consensus_signature",
       merkleRoot: "consensus_merkle_root",
       witnesses: participants,
       timestamp: new Date(),
     };
+  }
+
+  // Missing methods for compatibility
+  createTensor(data: number[], shape: number[]): DistributedTensor {
+    const size = shape.reduce((a, b) => a * b, 1);
+    const defaultLocation: EdgeLocation = {
+      region: "default",
+      datacenter: "default", 
+      coordinates: [0, 0],
+      capacity: 100,
+      currentLoad: 0,
+      networkLatency: new Map(),
+    };
+    
+    return {
+      data: data,
+      shape: {
+        dimensions: shape,
+        totalSize: size,
+        dims: shape,
+        size: size,
+      },
+      dtype: "float32",
+      cognitiveMetadata: {
+        attentionWeights: new Array(size).fill(0),
+        semanticTags: [],
+        emergentProperties: {},
+      },
+      workerId: `worker_${Date.now()}`,
+      location: defaultLocation,
+      timestamp: new Date(),
+      consensusHash: "",
+      replicationFactor: 1,
+      distributedMetadata: {
+        partitionKey: "",
+        shardId: 0,
+        consistencyLevel: "eventual",
+        networkPosition: {
+          clusterId: "default",
+          hierarchyLevel: 0,
+          parentNodes: [],
+          childNodes: [],
+          peerNodes: [],
+          influence: 0.5,
+        },
+        attentionWeight: 0.5,
+        emergentProperties: [],
+      },
+    };
+  }
+
+  async add(a: DistributedTensor, b: DistributedTensor): Promise<DistributedTensor> {
+    if (a.data.length !== b.data.length) {
+      throw new Error("Tensor dimensions must match");
+    }
+    
+    const resultData = a.data.map((val, i) => val + b.data[i]);
+    return this.createTensor(resultData, a.shape.dims);
   }
 }
 

@@ -240,7 +240,7 @@ export interface NetworkHierarchy {
 
 export class NetworkCoordinationSystem {
   private static instance: NetworkCoordinationSystem;
-  private networkCognition: NetworkCognition;
+  private networkCognition!: NetworkCognition;
   private workers: Map<string, CognitiveWorkerNode> = new Map();
   private coordinationEngine: CoordinationEngine;
   private emergenceDetector: NetworkEmergenceDetector;
@@ -509,7 +509,11 @@ export class NetworkCoordinationSystem {
         // Process financial data through worker
         const relevantData = this.filterDataForWorker(financialData, workerId);
         if (relevantData.length > 0) {
-          const output = await worker.processFinancialData(relevantData[0]);
+          const dataWithSource = { 
+            ...relevantData[0], 
+            source: (relevantData[0] as any).source || "network_coordination" 
+          };
+          const output = await worker.processFinancialData(dataWithSource);
           return { workerId, attention: output.attentionWeights };
         }
         return { workerId, attention: new Float32Array(1024) };
