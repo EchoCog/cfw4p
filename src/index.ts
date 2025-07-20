@@ -2,11 +2,18 @@
 // Copyright (c) 2024 ElizaOS-OpenCog-GnuCash Project
 // Licensed under the GPL-2.0 license
 
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { Hono } from "hono";
+import { cors } from "hono/cors";
 
-import { AddDispatchLimits, AddOutboundWorker, FetchTable, GetDispatchLimitFromScript, GetOutboundWorkerFromScript, Initialize } from './db';
-import type { Env } from './env';
+import {
+  AddDispatchLimits,
+  AddOutboundWorker,
+  FetchTable,
+  GetDispatchLimitFromScript,
+  GetOutboundWorkerFromScript,
+  Initialize,
+} from "./db";
+import type { Env } from "./env";
 import {
   GetScriptsByTags,
   DeleteScriptInDispatchNamespace,
@@ -14,25 +21,28 @@ import {
   PutScriptInDispatchNamespace,
   PutTagsOnScript,
   GetTagsOnScript,
-} from './resource';
-import { handleDispatchError, withCustomer, withDb } from './router';
-import { renderPage, BuildTable, UploadPage } from './render';
-import { DispatchLimits, OutboundWorker, WorkerArgs } from './types';
-import { ElizoscogAPI, FinancialQuery } from './elizoscog-api';
+} from "./resource";
+import { handleDispatchError, withCustomer, withDb } from "./router";
+import { renderPage, BuildTable, UploadPage } from "./render";
+import { DispatchLimits, OutboundWorker, WorkerArgs } from "./types";
+import { ElizoscogAPI, FinancialQuery } from "./elizoscog-api";
 
 const app = new Hono<{ Bindings: Env }>();
 
 // Enable CORS for all routes
-app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Customer-Token'],
-}));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Customer-Token"],
+  }),
+);
 
 // Initialize ElizaOS-OpenCog-GnuCash API
 const elizoscogAPI = new ElizoscogAPI();
 
-app.get('/favicon.ico', () => {
+app.get("/favicon.ico", () => {
   return new Response();
 });
 
@@ -41,103 +51,121 @@ app.get('/favicon.ico', () => {
  */
 
 // Get financial accounts
-app.get('/api/accounts', async (c) => {
+app.get("/api/accounts", async (c) => {
   try {
     const accounts = await elizoscogAPI.getAccounts();
     return c.json({
       success: true,
       data: accounts,
-      message: 'Financial accounts retrieved successfully'
+      message: "Financial accounts retrieved successfully",
     });
   } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Failed to retrieve accounts',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to retrieve accounts",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
 // Get recent transactions
-app.get('/api/transactions', async (c) => {
+app.get("/api/transactions", async (c) => {
   try {
-    const limit = parseInt(c.req.query('limit') || '50');
+    const limit = parseInt(c.req.query("limit") || "50");
     const transactions = await elizoscogAPI.getTransactions(limit);
     return c.json({
       success: true,
       data: transactions,
-      message: 'Transactions retrieved successfully'
+      message: "Transactions retrieved successfully",
     });
   } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Failed to retrieve transactions',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to retrieve transactions",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
 // Ask financial questions using natural language
-app.post('/api/ask', async (c) => {
+app.post("/api/ask", async (c) => {
   try {
     const query: FinancialQuery = await c.req.json();
-    
+
     if (!query.query) {
-      return c.json({
-        success: false,
-        error: 'Query is required'
-      }, 400);
+      return c.json(
+        {
+          success: false,
+          error: "Query is required",
+        },
+        400,
+      );
     }
 
     const response = await elizoscogAPI.askFinancialQuestion(query);
     return c.json({
       success: true,
       data: response,
-      message: 'Financial question processed successfully'
+      message: "Financial question processed successfully",
     });
   } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Failed to process financial question',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to process financial question",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
 // Get financial insights
-app.get('/api/insights', async (c) => {
+app.get("/api/insights", async (c) => {
   try {
     const insights = await elizoscogAPI.getFinancialInsights();
     return c.json({
       success: true,
       data: insights,
-      message: 'Financial insights generated successfully'
+      message: "Financial insights generated successfully",
     });
   } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Failed to generate insights',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to generate insights",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
 // Simulate transaction
-app.post('/api/simulate-transaction', async (c) => {
+app.post("/api/simulate-transaction", async (c) => {
   try {
     const transaction = await c.req.json();
     const result = await elizoscogAPI.simulateTransaction(transaction);
     return c.json({
       success: result.success,
       data: result,
-      message: result.message
+      message: result.message,
     });
   } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Failed to simulate transaction',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to simulate transaction",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
@@ -146,7 +174,7 @@ app.post('/api/simulate-transaction', async (c) => {
  */
 
 // Main dashboard
-app.get('/', withDb, async (c) => {
+app.get("/", withDb, async (c) => {
   let body = `
     <div style="max-width: 1200px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
       <h1>🌟 ElizaOS-OpenCog-GnuCash Workers for Platforms</h1>
@@ -184,36 +212,44 @@ app.get('/', withDb, async (c) => {
 
   try {
     body += [
-      BuildTable('customers', await FetchTable(c.var.db, 'customers')),
-      BuildTable('customer_tokens', await FetchTable(c.var.db, 'customer_tokens')),
-    ].join('');
+      BuildTable("customers", await FetchTable(c.var.db, "customers")),
+      BuildTable(
+        "customer_tokens",
+        await FetchTable(c.var.db, "customer_tokens"),
+      ),
+    ].join("");
   } catch (e) {
-    body += '<div>No DB data. Do you need to <a href="/init">initialize</a>?</div>';
+    body +=
+      '<div>No DB data. Do you need to <a href="/init">initialize</a>?</div>';
   }
 
   try {
     const scripts = await GetScriptsInDispatchNamespace(c.env);
-    body += '</br><h2>Dispatch Namespace</h2>';
+    body += "</br><h2>Dispatch Namespace</h2>";
     body += BuildTable(c.env.DISPATCH_NAMESPACE_NAME, scripts);
   } catch (e) {
     console.log(JSON.stringify(e, Object.getOwnPropertyNames(e)));
     body += `<div>Dispatch namespace "${c.env.DISPATCH_NAMESPACE_NAME}" was not found.</div>`;
   }
 
-  body += '</div>';
+  body += "</div>";
   return c.html(renderPage(body));
 });
 
 // Initialize example data
-app.get('/init', withDb, async (c) => {
+app.get("/init", withDb, async (c) => {
   const scripts = await GetScriptsInDispatchNamespace(c.env);
-  await Promise.all(scripts.map(async (script) => DeleteScriptInDispatchNamespace(c.env, script.id)));
+  await Promise.all(
+    scripts.map(async (script) =>
+      DeleteScriptInDispatchNamespace(c.env, script.id),
+    ),
+  );
   await Initialize(c.var.db);
-  return Response.redirect(c.req.url.replace('/init', ''));
+  return Response.redirect(c.req.url.replace("/init", ""));
 });
 
 // Upload interface
-app.get('/upload', (c) => {
+app.get("/upload", (c) => {
   const customUploadPage = `
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
       <h2>Upload ElizaOS-OpenCog-GnuCash Worker Script</h2>
@@ -225,20 +261,29 @@ app.get('/upload', (c) => {
 });
 
 // Get scripts for a customer
-app.get('/script', withDb, withCustomer, async (c) => {
-  const scripts = await GetScriptsByTags(c.env, [{ tag: c.var.customer.id, allow: true }]);
+app.get("/script", withDb, withCustomer, async (c) => {
+  const scripts = await GetScriptsByTags(c.env, [
+    { tag: c.var.customer.id, allow: true },
+  ]);
   return c.json(scripts);
 });
 
 // Dispatch worker execution
-app.get('/dispatch/:name', withDb, async (c) => {
+app.get("/dispatch/:name", withDb, async (c) => {
   try {
-    const scriptName = c.req.param('name');
-    const dispatchLimits = (await GetDispatchLimitFromScript(c.var.db, scriptName)).results as unknown as DispatchLimits;
-    const outboundWorker = (await GetOutboundWorkerFromScript(c.var.db, scriptName)).results as unknown as OutboundWorker;
+    const scriptName = c.req.param("name");
+    const dispatchLimits = (
+      await GetDispatchLimitFromScript(c.var.db, scriptName)
+    ).results as unknown as DispatchLimits;
+    const outboundWorker = (
+      await GetOutboundWorkerFromScript(c.var.db, scriptName)
+    ).results as unknown as OutboundWorker;
     const workerArgs: WorkerArgs = {};
-    const worker = c.env.dispatcher.get(scriptName, workerArgs, { limits: dispatchLimits, outbound: outboundWorker?.outbound_script_id });
-    
+    const worker = c.env.dispatcher.get(scriptName, workerArgs, {
+      limits: dispatchLimits,
+      outbound: outboundWorker?.outbound_script_id,
+    });
+
     return await worker.fetch(c.req.raw);
   } catch (e: unknown) {
     return handleDispatchError(c, e);
@@ -246,16 +291,16 @@ app.get('/dispatch/:name', withDb, async (c) => {
 });
 
 // Upload customer script
-app.put('/script/:name', withDb, withCustomer, async (c) => {
-  const scriptName = c.req.param('name');
+app.put("/script/:name", withDb, withCustomer, async (c) => {
+  const scriptName = c.req.param("name");
 
   try {
     const tags = await GetTagsOnScript(c.env, scriptName);
     if (tags.length > 0 && !tags.includes(c.var.customer.id)) {
-      return c.text('Script name already reserved', 409);
+      return c.text("Script name already reserved", 409);
     }
   } catch (e) {
-    return c.text('Could not complete request', 500);
+    return c.text("Could not complete request", 500);
   }
 
   let scriptContent: string;
@@ -278,29 +323,45 @@ app.put('/script/:name', withDb, withCustomer, async (c) => {
 
     scriptContent = data.script;
     limits = { script_id: scriptName, ...data.dispatch_config.limits };
-    outbound = { script_id: scriptName, outbound_script_id: data.dispatch_config.outbound };
+    outbound = {
+      script_id: scriptName,
+      outbound_script_id: data.dispatch_config.outbound,
+    };
   } catch (e) {
-    return c.text('Expected json: { script: string, dispatch_config: { limits?: { cpuMs: number, memory: number }, outbound: string }}', 400);
+    return c.text(
+      "Expected json: { script: string, dispatch_config: { limits?: { cpuMs: number, memory: number }, outbound: string }}",
+      400,
+    );
   }
 
-  const scriptResponse = await PutScriptInDispatchNamespace(c.env, scriptName, scriptContent);
+  const scriptResponse = await PutScriptInDispatchNamespace(
+    c.env,
+    scriptName,
+    scriptContent,
+  );
   if (!scriptResponse.ok) {
-    return c.json(await scriptResponse.json(), 400)
+    return c.json(await scriptResponse.json(), 400);
   }
 
   if (limits.cpuMs || limits.memory) await AddDispatchLimits(c.var.db, limits);
 
-  if (outbound?.outbound_script_id !== '') {
+  if (outbound?.outbound_script_id !== "") {
     await AddOutboundWorker(c.var.db, outbound);
   }
 
-  const tagsResponse = await PutTagsOnScript(c.env, scriptName, [c.var.customer.id, c.var.customer.plan_type]);
+  const tagsResponse = await PutTagsOnScript(c.env, scriptName, [
+    c.var.customer.id,
+    c.var.customer.plan_type,
+  ]);
   if (!tagsResponse.ok) {
-    console.log(tagsResponse.url, tagsResponse.status, await tagsResponse.text());
+    console.log(
+      tagsResponse.url,
+      tagsResponse.status,
+      await tagsResponse.text(),
+    );
   }
 
-  return c.text('ElizaOS-OpenCog-GnuCash worker deployed successfully', 201);
+  return c.text("ElizaOS-OpenCog-GnuCash worker deployed successfully", 201);
 });
 
 export default app;
-
