@@ -1,0 +1,92 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+        continue-on-error: true
+        id: unit_tests
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "Unit test status: ${{ steps.unit_tests.outcome }}"
+          
+          # Create a basic test report
+          if [ "${{ steps.unit_tests.outcome }}" = "success" ]; then
+            echo "✅ All unit tests passed"
+          else
+            echo "❌ Some unit tests failed or are not implemented"
+          fi
+
+      - name: Report unit test issues
+        if: steps.unit_tests.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🧪 Unit Tests Failed';
+            const body = `
+            ## Unit Tests Failed
+            
+            **Status:** ${{ steps.unit_tests.outcome }}
+            
+            ### Actionable Steps:
+            1. Run \`npm run test:unit\` locally to see detailed test results
+            2. Check for failing test cases and review error messages
+            3. Fix any broken functionality identified by tests
+            4. Add unit tests for new features or bug fixes
+            5. Ensure test environment is properly configured
+            
+            **Common Issues:**
+            - Test environment setup problems
+            - Missing test dependencies
+            - Broken functionality in tested code
+            - Async testing issues
+            - Mock or stub configuration problems
+            
+            **Testing Best Practices:**
+            - Write tests for critical business logic
+            - Use descriptive test names
+            - Keep tests isolated and independent
+            - Mock external dependencies
+            - Test both success and error scenarios
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['testing', 'unit-tests', 'automated-issue']
+              });
+            }

@@ -1,0 +1,305 @@
+name: Issue Management & Cleanup
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  issues:
+    types: [closed]
+
+jobs:
+  cleanup-resolved-issues:
+    name: Cleanup Resolved Automated Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Close resolved automated issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'automated-issue',
+              state: 'open',
+              per_page: 100
+            });
+            
+            console.log(`Found ${issues.length} open automated issues`);
+            
+            for (const issue of issues) {
+              const labels = issue.labels.map(label => label.name);
+              const createdAt = new Date(issue.created_at);
+              const daysSinceCreated = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+              
+              // Close stale issues older than 7 days
+              if (daysSinceCreated > 7) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `
+                  ## 🤖 Automated Issue Cleanup
+                  
+                  This automated issue has been open for ${daysSinceCreated} days and is being closed as part of routine cleanup.
+                  
+                  **If this issue is still relevant:**
+                  - Reopen this issue manually
+                  - Or create a new issue with updated context
+                  - The underlying problem may have been resolved in recent commits
+                  
+                  **Auto-closed on:** ${new Date().toISOString()}
+                  `
+                });
+                
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed',
+                  labels: [...labels, 'auto-closed']
+                });
+                
+                console.log(`Closed stale issue #${issue.number}: ${issue.title}`);
+              }
+            }
+
+  validate-issue-resolution:
+    name: Validate Issue Resolution
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'closed'
+    steps:
+      - name: Check if automated issue was properly resolved
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(label => label.name);
+            
+            // Only process automated issues
+            if (!labels.includes('automated-issue')) {
+              console.log('Not an automated issue, skipping validation');
+              return;
+            }
+            
+            console.log(`Validating resolution of automated issue #${issue.number}`);
+            
+            // Check if issue was closed by a commit or manually
+            const closer = issue.closed_by?.login;
+            const wasAutoResolved = issue.state_reason === 'completed';
+            
+            // Add resolution tracking comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `
+              ## 📋 Issue Resolution Tracking
+              
+              **Closed by:** ${closer || 'Unknown'}
+              **Resolution type:** ${wasAutoResolved ? 'Completed' : 'Manual closure'}
+              **Closed at:** ${new Date().toISOString()}
+              
+              **Issue category:** ${labels.filter(l => l !== 'automated-issue').join(', ')}
+              
+              **Validation:** This closure has been logged for improvement tracking.
+              `
+            });
+
+  weekly-health-report:
+    name: Weekly CI/CD Health Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Generate health report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get recent workflow runs
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 50,
+              created: `>${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()}`
+            });
+            
+            // Get automated issues from the last week
+            const { data: recentIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'automated-issue',
+              state: 'all',
+              since: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+              per_page: 100
+            });
+            
+            // Calculate metrics
+            const totalRuns = workflowRuns.total_count;
+            const failedRuns = workflowRuns.workflow_runs.filter(run => run.conclusion === 'failure').length;
+            const successRate = totalRuns > 0 ? ((totalRuns - failedRuns) / totalRuns * 100).toFixed(1) : 'N/A';
+            
+            const issuesByCategory = {};
+            recentIssues.forEach(issue => {
+              issue.labels.forEach(label => {
+                if (label.name !== 'automated-issue') {
+                  issuesByCategory[label.name] = (issuesByCategory[label.name] || 0) + 1;
+                }
+              });
+            });
+            
+            const reportBody = `
+            ## 📊 Weekly CI/CD Health Report
+            
+            **Report Period:** ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString()} - ${new Date().toLocaleDateString()}
+            
+            ### 🎯 Key Metrics
+            - **Total Workflow Runs:** ${totalRuns}
+            - **Failed Runs:** ${failedRuns}
+            - **Success Rate:** ${successRate}%
+            - **Automated Issues Created:** ${recentIssues.length}
+            
+            ### 📈 Issue Categories
+            ${Object.entries(issuesByCategory).map(([category, count]) => 
+              `- **${category}:** ${count} issues`
+            ).join('\n') || 'No categorized issues'}
+            
+            ### 🎯 Recommendations
+            ${successRate < 90 ? '- ⚠️ **Success rate below 90%** - Review failing workflows\n' : ''}
+            ${failedRuns > 5 ? '- ⚠️ **High failure count** - Consider workflow improvements\n' : ''}
+            ${recentIssues.length > 10 ? '- ⚠️ **Many automated issues** - Review system stability\n' : ''}
+            ${successRate >= 90 && failedRuns <= 5 && recentIssues.length <= 10 ? '- ✅ **System health looks good** - Continue current practices\n' : ''}
+            
+            ### 🔧 Action Items
+            - Review and address any open automated issues
+            - Monitor workflow performance trends
+            - Consider optimizing frequently failing workflows
+            - Update this report system based on insights
+            
+            **Generated on:** ${new Date().toISOString()}
+            `;
+            
+            // Create or update the health report issue
+            const { data: existingIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'ci/cd-health-report',
+              state: 'open'
+            });
+            
+            if (existingIssues.length > 0) {
+              // Update existing report
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssues[0].number,
+                body: reportBody
+              });
+            } else {
+              // Create new report issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `CI/CD Health Report - Week of ${new Date().toLocaleDateString()}`,
+                body: reportBody,
+                labels: ['ci/cd-health-report', 'report', 'automated-issue']
+              });
+            }
+
+  dependency-update-check:
+    name: Check for Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Check for outdated dependencies
+        run: |
+          npm outdated --json > outdated.json || true
+          if [ -s outdated.json ]; then
+            echo "outdated-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "outdated-found=false" >> $GITHUB_OUTPUT
+          fi
+        id: outdated_check
+
+      - name: Create dependency update issue
+        if: steps.outdated_check.outputs.outdated-found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let outdatedDeps = {};
+            
+            try {
+              const outdatedContent = fs.readFileSync('outdated.json', 'utf8');
+              if (outdatedContent.trim()) {
+                outdatedDeps = JSON.parse(outdatedContent);
+              }
+            } catch (error) {
+              console.log('No outdated dependencies file or parsing error');
+              return;
+            }
+            
+            if (Object.keys(outdatedDeps).length === 0) {
+              console.log('No outdated dependencies found');
+              return;
+            }
+            
+            const depList = Object.entries(outdatedDeps).map(([name, info]) => 
+              `- **${name}**: ${info.current} → ${info.latest} ${info.type === 'devDependencies' ? '(dev)' : ''}`
+            ).join('\n');
+            
+            const body = `
+            ## 📦 Dependency Updates Available
+            
+            The following dependencies have updates available:
+            
+            ${depList}
+            
+            ### Recommended Actions:
+            1. Review the changelog for each dependency
+            2. Test updates in a development branch
+            3. Update dependencies: \`npm update\`
+            4. Run full test suite after updates
+            5. Consider updating major versions separately
+            
+            **Auto-generated on:** ${new Date().toISOString()}
+            **Command to check:** \`npm outdated\`
+            `;
+            
+            // Check if dependency update issue already exists
+            const { data: existingIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'dependencies',
+              state: 'open'
+            });
+            
+            const existingDepIssue = existingIssues.find(issue => 
+              issue.title.includes('Dependency Updates Available')
+            );
+            
+            if (existingDepIssue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingDepIssue.number,
+                body: body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📦 Dependency Updates Available',
+                body: body,
+                labels: ['dependencies', 'maintenance', 'automated-issue']
+              });
+            }
