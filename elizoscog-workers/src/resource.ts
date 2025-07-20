@@ -1,19 +1,23 @@
 // Copyright (c) 2022 Cloudflare, Inc.
 // Licensed under the APACHE LICENSE, VERSION 2.0 license found in the LICENSE file or at http://www.apache.org/licenses/LICENSE-2.0
 
-import { Env } from './env';
-import { ApiScript, ApiScriptWithTags } from './types';
+import { Env } from "./env";
+import { ApiScript, ApiScriptWithTags } from "./types";
 
-const BaseURI = (env: Env) => `https://api.cloudflare.com/client/v4/accounts/${env.DISPATCH_NAMESPACE_ACCOUNT_ID}/workers`;
-const ScriptsURI = (env: Env) => `${BaseURI(env)}/dispatch/namespaces/${env.DISPATCH_NAMESPACE_NAME}/scripts`;
+const BaseURI = (env: Env) =>
+  `https://api.cloudflare.com/client/v4/accounts/${env.DISPATCH_NAMESPACE_ACCOUNT_ID}/workers`;
+const ScriptsURI = (env: Env) =>
+  `${BaseURI(env)}/dispatch/namespaces/${env.DISPATCH_NAMESPACE_NAME}/scripts`;
 const MakeHeaders = (env: Env) => ({
-  'Authorization': `Bearer ${env.DISPATCH_NAMESPACE_API_TOKEN}`,
+  Authorization: `Bearer ${env.DISPATCH_NAMESPACE_API_TOKEN}`,
 });
 
-export async function GetScriptsInDispatchNamespace(env: Env): Promise<ApiScript[]> {
+export async function GetScriptsInDispatchNamespace(
+  env: Env,
+): Promise<ApiScript[]> {
   const data = (await (
     await fetch(ScriptsURI(env), {
-      method: 'GET',
+      method: "GET",
       headers: MakeHeaders(env),
     })
   ).json()) as { result: ApiScript[] };
@@ -25,26 +29,36 @@ export async function GetScriptsInDispatchNamespace(env: Env): Promise<ApiScript
         created_on: result.created_on,
         // TODO: Script tags will be available in "/dispatch/namespaces/<NAMESPACE_NAME>/scripts" endpoint.
         //       For now, have to do extra api call and make this map async.
-        script_tags: (await GetTagsOnScript(env, result.id as string)).join(', '),
+        script_tags: (await GetTagsOnScript(env, result.id as string)).join(
+          ", ",
+        ),
       }),
     ),
   );
 }
 
-export async function GetScriptsByTags(env: Env, tags: { tag: string; allow: boolean }[]): Promise<ApiScript[]> {
-  const uriTags = tags.map((tag) => `${tag.tag}:${tag.allow ? 'yes' : 'no'}`).join(',');
+export async function GetScriptsByTags(
+  env: Env,
+  tags: { tag: string; allow: boolean }[],
+): Promise<ApiScript[]> {
+  const uriTags = tags
+    .map((tag) => `${tag.tag}:${tag.allow ? "yes" : "no"}`)
+    .join(",");
   const data = (await (
     await fetch(`${ScriptsURI(env)}?tags=${uriTags}`, {
-      method: 'GET',
+      method: "GET",
       headers: MakeHeaders(env),
     })
   ).json()) as { result: ApiScript[] };
   return data.result;
 }
 
-export async function GetTagsOnScript(env: Env, scriptName: string): Promise<string[]> {
+export async function GetTagsOnScript(
+  env: Env,
+  scriptName: string,
+): Promise<string[]> {
   const response = await fetch(`${ScriptsURI(env)}/${scriptName}/tags`, {
-    method: 'GET',
+    method: "GET",
     headers: MakeHeaders(env),
   });
   /*
@@ -58,7 +72,11 @@ export async function GetTagsOnScript(env: Env, scriptName: string): Promise<str
   return data.result ?? [];
 }
 
-export async function PutScriptInDispatchNamespace(env: Env, scriptName: string, scriptContent: string): Promise<Response> {
+export async function PutScriptInDispatchNamespace(
+  env: Env,
+  scriptName: string,
+  scriptContent: string,
+): Promise<Response> {
   /*
    * The extension doesn't matter, but we make it clear this is JavaScript module syntax.
    */
@@ -90,20 +108,36 @@ export async function PutScriptInDispatchNamespace(env: Env, scriptName: string,
      * ],
      */
   };
-  formData.append('metadata', new File([JSON.stringify(metadata)], 'metadata.json', { type: 'application/json' }));
+  formData.append(
+    "metadata",
+    new File([JSON.stringify(metadata)], "metadata.json", {
+      type: "application/json",
+    }),
+  );
 
   /*
    * Add the main script to the bundle
    */
-  formData.append('script', new File([scriptContent], scriptFileName, { type: 'application/javascript+module' }));
+  formData.append(
+    "script",
+    new File([scriptContent], scriptFileName, {
+      type: "application/javascript+module",
+    }),
+  );
 
   /*
    * For this example, we dynamically create a simple js module and add it to the bundle
    * The main script can then use it like this:
    *   import { platformThing } from "./platform_module.mjs";
    */
-  const platformModuleContent = 'const platformThing = "This module is provided by the platform"; export { platformThing };';
-  formData.append('platform_module', new File([platformModuleContent], 'platform_module.mjs', { type: 'application/javascript+module' }));
+  const platformModuleContent =
+    'const platformThing = "This module is provided by the platform"; export { platformThing };';
+  formData.append(
+    "platform_module",
+    new File([platformModuleContent], "platform_module.mjs", {
+      type: "application/javascript+module",
+    }),
+  );
 
   /*
    * Upload the script bundle
@@ -111,7 +145,7 @@ export async function PutScriptInDispatchNamespace(env: Env, scriptName: string,
    * simply change 'body' to your script content (as a string)
    */
   return await fetch(`${ScriptsURI(env)}/${scriptName}`, {
-    method: 'PUT',
+    method: "PUT",
     body: formData,
     headers: {
       ...MakeHeaders(env),
@@ -119,19 +153,26 @@ export async function PutScriptInDispatchNamespace(env: Env, scriptName: string,
   });
 }
 
-export async function DeleteScriptInDispatchNamespace(env: Env, scriptName: string): Promise<Response> {
+export async function DeleteScriptInDispatchNamespace(
+  env: Env,
+  scriptName: string,
+): Promise<Response> {
   return await fetch(`${ScriptsURI(env)}/${scriptName}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: MakeHeaders(env),
   });
 }
 
-export async function PutTagsOnScript(env: Env, scriptName: string, tags: string[]): Promise<Response> {
+export async function PutTagsOnScript(
+  env: Env,
+  scriptName: string,
+  tags: string[],
+): Promise<Response> {
   return await fetch(`${ScriptsURI(env)}/${scriptName}/tags`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(tags),
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...MakeHeaders(env),
     },
   });
