@@ -14,8 +14,8 @@ pytest-asyncio>=0.21.0
 flask>=2.3.0
 
 # Optional ML dependencies for GGML optimization
-torch>=2.0.0;extra=="ml"
-transformers>=4.20.0;extra=="ml"
-abqpy
-bridges
-pylxd
+torch>=2.0.0; extra == "ml"
+transformers>=4.20.0; extra == "ml"
+abqpy>=2025.8
+bridges>=3.4.6
+pylxd>=2.3.5

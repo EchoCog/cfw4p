@@ -53,7 +53,9 @@ def test_python_version_compatibility():
     import sys
     
     # The CI uses Python 3.11, but we should be compatible with 3.11+
-    assert sys.version_info >= (3, 11), f"Python version {sys.version} is not supported"
+    # Support Python 3.11 through 3.13 (future-proofing)
+    assert sys.version_info >= (3, 11), f"Python version {sys.version} is not supported (minimum: 3.11)"
+    assert sys.version_info < (3, 14), f"Python version {sys.version} is untested (maximum tested: 3.13)"
 
 
 def test_gnucash_rest_import_graceful_failure():
