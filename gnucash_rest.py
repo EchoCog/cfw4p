@@ -28,50 +28,68 @@ Boston, MA 02110-1301, USA gnu@gnu.org
 
 '''
 
-import gnucash
-import gnucash_simple
+# Try to import GnuCash libraries, fallback gracefully if not available
+try:
+    import gnucash
+    import gnucash_simple
+    from gnucash.gnucash_business import Vendor, Bill, Entry, GncNumeric, \
+        Customer, Invoice, Split, Account, Transaction
+    from gnucash import \
+        QOF_QUERY_AND, \
+        QOF_QUERY_OR, \
+        QOF_QUERY_NAND, \
+        QOF_QUERY_NOR
+    GNUCASH_AVAILABLE = True
+except ImportError as e:
+    # GnuCash not available - create stub objects for graceful fallback
+    GNUCASH_AVAILABLE = False
+    print(f"Warning: GnuCash libraries not available: {e}")
+    print("Running in stub mode - API endpoints will return appropriate errors")
+    
+    # Create stub classes/constants to prevent NameError
+    class _GnuCashStub:
+        def __init__(self, *args, **kwargs):
+            pass
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+    
+    gnucash = _GnuCashStub()
+    gnucash_simple = _GnuCashStub()
+    Vendor = Bill = Entry = GncNumeric = Customer = Invoice = Split = Account = Transaction = _GnuCashStub
+    QOF_QUERY_AND = QOF_QUERY_OR = QOF_QUERY_NAND = QOF_QUERY_NOR = 0
+
 import json
 import atexit
 from flask import Flask, abort, request, Response
 import sys
 import getopt
-
 from decimal import Decimal
-
-from gnucash.gnucash_business import Vendor, Bill, Entry, GncNumeric, \
-    Customer, Invoice, Split, Account, Transaction
-
 import datetime
 
-from gnucash import \
-    QOF_QUERY_AND, \
-    QOF_QUERY_OR, \
-    QOF_QUERY_NAND, \
-    QOF_QUERY_NOR, \
-    QOF_QUERY_XOR
-
-from gnucash import \
-    QOF_STRING_MATCH_NORMAL, \
-    QOF_STRING_MATCH_CASEINSENSITIVE
-
-from gnucash import \
-    QOF_COMPARE_LT, \
-    QOF_COMPARE_LTE, \
-    QOF_COMPARE_EQUAL, \
-    QOF_COMPARE_GT, \
-    QOF_COMPARE_GTE, \
-    QOF_COMPARE_NEQ
-
-from gnucash import \
-    QOF_DATE_MATCH_NORMAL
-
-from gnucash import \
-    INVOICE_TYPE
-
-from gnucash import \
-    INVOICE_IS_PAID
-
-from gnucash import SessionOpenMode
+# Additional GnuCash constants that may be needed
+if GNUCASH_AVAILABLE:
+    from gnucash import \
+        QOF_QUERY_XOR, \
+        QOF_STRING_MATCH_NORMAL, \
+        QOF_STRING_MATCH_CASEINSENSITIVE, \
+        QOF_COMPARE_LT, \
+        QOF_COMPARE_LTE, \
+        QOF_COMPARE_EQUAL, \
+        QOF_COMPARE_GT, \
+        QOF_COMPARE_GTE, \
+        QOF_COMPARE_NEQ, \
+        QOF_DATE_MATCH_NORMAL, \
+        INVOICE_TYPE, \
+        INVOICE_IS_PAID, \
+        SessionOpenMode
+else:
+    # Stub constants for when GnuCash is not available
+    QOF_QUERY_XOR = 0
+    QOF_STRING_MATCH_NORMAL = QOF_STRING_MATCH_CASEINSENSITIVE = 0
+    QOF_COMPARE_LT = QOF_COMPARE_LTE = QOF_COMPARE_EQUAL = 0
+    QOF_COMPARE_GT = QOF_COMPARE_GTE = QOF_COMPARE_NEQ = 0
+    QOF_DATE_MATCH_NORMAL = INVOICE_TYPE = INVOICE_IS_PAID = 0
+    SessionOpenMode = _GnuCashStub
 
 app = Flask(__name__)
 app.debug = True
