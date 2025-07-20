@@ -98,3 +98,5 @@ def api_accounts():
                 mimetype='application/json')
 
     else:
+        return Response(json.dumps({'error': 'Method not allowed'}), status=405,
+            mimetype='application/json')
