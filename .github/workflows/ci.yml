@@ -155,8 +155,8 @@ jobs:
 
       - name: Run Python tests
         run: |
-          python -m pytest gnucash_rest.py --verbose || echo "No pytest configuration found"
-          python -c "import gnucash_rest; print('GnuCash REST module imports successfully')"
+          python -m pytest test_python_components.py --verbose
+          echo "✅ Python component tests completed successfully"
         continue-on-error: true
         id: python_tests
 
