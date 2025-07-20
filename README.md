@@ -1,3 +1,42 @@
+# ElizaOS-OpenCog-GnuCash Workers for Platforms
+
+[![CI - Build, Test & Quality](https://github.com/EchoCog/cfw4p/actions/workflows/ci.yml/badge.svg)](https://github.com/EchoCog/cfw4p/actions/workflows/ci.yml)
+[![Deploy to Cloudflare Workers](https://github.com/EchoCog/cfw4p/actions/workflows/deploy.yml/badge.svg)](https://github.com/EchoCog/cfw4p/actions/workflows/deploy.yml)
+[![Documentation & Links Check](https://github.com/EchoCog/cfw4p/actions/workflows/documentation.yml/badge.svg)](https://github.com/EchoCog/cfw4p/actions/workflows/documentation.yml)
+
+**ElizaOS-OpenCog-GnuCash AI-Financial Intelligence deployed on Cloudflare Workers for Platforms**
+
+## 🚀 CI/CD & Automation
+
+This project features a comprehensive CI/CD pipeline with automated issue creation for failures:
+
+### GitHub Actions Workflows
+- **🔄 CI - Build, Test & Quality**: Comprehensive testing, linting, and quality checks
+- **🚀 Deploy**: Automated deployment to Cloudflare Workers with staging/production support  
+- **✅ PR Validation**: Quality gates and validation for pull requests
+- **🧪 Unit Tests**: Automated unit testing with failure reporting
+- **📋 Issue Management**: Automated issue cleanup and health reporting
+- **📚 Documentation**: Link checking and documentation quality validation
+
+### Automated Issue Creation
+When workflows fail, the system automatically creates GitHub issues with:
+- Detailed error context and failure information
+- Actionable remediation steps for developers  
+- Common troubleshooting guides and solutions
+- Proper categorization with relevant labels
+
+[**📖 View complete CI/CD documentation**](.github/README.md)
+
+## 🛠️ Technology Stack
+- **AI/Cognitive**: ElizaOS, OpenCog tensor operations
+- **Financial**: GnuCash REST API integration
+- **Platform**: Cloudflare Workers for Platforms
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Backend**: Hono.js, D1 Database
+- **CI/CD**: GitHub Actions with automated issue creation
+
+---
+
 # Workers for Platforms Example Project
 
 - [Blog post](https://blog.cloudflare.com/workers-for-platforms/)
