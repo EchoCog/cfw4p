@@ -1,5 +1,9 @@
 name: PR Validation & Quality Gate
 
+permissions:
+  contents: read
+  issues: write
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
