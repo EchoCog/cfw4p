@@ -9,7 +9,7 @@ import {
   EdgeLocation,
   EmergentProperty,
 } from "./distributed-tensor-ops";
-import { FinancialAgent, AgentState, AgentMessage } from "./financial-agent";
+import { FinancialAgent, AgentState, AgentMessage, BasicFinancialAgent } from "./financial-agent";
 import {
   distributedMemory,
   DistributedMemorySystem,
@@ -142,10 +142,10 @@ export interface NetworkRole {
 
 export class CognitiveWorkerNode {
   private config: WorkerConfig;
-  private aarCore: AARCore;
-  private financialAgent: FinancialAgent;
-  private memorySystem: DistributedMemorySystem;
-  private attentionMechanism: AttentionMechanism;
+  private aarCore!: AARCore;
+  private financialAgent!: FinancialAgent;
+  private memorySystem!: DistributedMemorySystem;
+  private attentionMechanism!: AttentionMechanism;
   private networkConnections: Map<string, WorkerConnection> = new Map();
   private computationalWork: ComputationalWork;
   private emergenceHistory: EmergentProperty[] = [];
@@ -160,13 +160,18 @@ export class CognitiveWorkerNode {
       memoryConsolidations: 0,
     };
 
-    this.initializeAARCore();
+    // Initialize components asynchronously
+    this.initializeComponents();
+  }
+
+  private async initializeComponents(): Promise<void> {
+    await this.initializeAARCore();
     this.initializeFinancialAgent();
     this.initializeMemorySystem();
     this.initializeAttentionMechanism();
   }
 
-  private initializeAARCore(): void {
+  private async initializeAARCore(): Promise<void> {
     const { agentDim, arenaDim, relationDim } = this.config.aarDimensions;
 
     // Initialize Agent Manifold (outward-directed)
@@ -331,9 +336,9 @@ export class CognitiveWorkerNode {
   }
 
   private initializeFinancialAgent(): void {
-    this.financialAgent = new FinancialAgent(
+    this.financialAgent = new BasicFinancialAgent(
       this.config.id,
-      this.mapWorkerTypeToAgentType(),
+      this.config.type
     );
   }
 
@@ -1094,5 +1099,3 @@ class AttentionMechanism {
     return specializationFactor * Math.sin(index * 0.1); // Simplified specialization pattern
   }
 }
-
-export { CognitiveWorkerNode };

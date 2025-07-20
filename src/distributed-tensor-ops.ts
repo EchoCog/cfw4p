@@ -3,7 +3,27 @@
  * Enhanced tensor operations for distributed financial intelligence network
  */
 
-import { CognitiveTensor, Tensor, TensorShape } from "./tensor-ops";
+// Basic tensor types
+export interface TensorShape {
+  dimensions: number[];
+  totalSize: number;
+  dims: number[]; // alias for dimensions for compatibility
+  size: number; // alias for totalSize for compatibility
+}
+
+export interface Tensor {
+  data: number[];
+  shape: TensorShape;
+  dtype: "float32" | "float64" | "int32" | "int64";
+}
+
+export interface CognitiveTensor extends Tensor {
+  cognitiveMetadata: {
+    attentionWeights: number[];
+    semanticTags: string[];
+    emergentProperties: Record<string, any>;
+  };
+}
 
 export interface DistributedTensor extends CognitiveTensor {
   workerId: string;

@@ -272,7 +272,7 @@ export interface Recommendation {
 export class MasterCognitiveOrchestrator {
   private static instance: MasterCognitiveOrchestrator;
   private config: OrchestrationConfig;
-  private networkState: CognitiveNetworkState;
+  private networkState!: CognitiveNetworkState;
   private workers: Map<string, CognitiveWorkerNode> = new Map();
   private requestQueue: FinancialIntelligenceRequest[] = [];
   private responseHistory: Map<string, IntelligenceResponse> = new Map();
