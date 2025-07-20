@@ -654,10 +654,12 @@ export class CognitiveWorkerNode {
     const importance = this.calculateImportance(data, aarOutput);
 
     await this.memorySystem.storeMemory(
-      inputTensor,
       "financial_analysis",
-      concepts,
-      importance,
+      {
+        inputTensor,
+        concepts,
+        importance,
+      },
     );
 
     this.computationalWork.memoryConsolidations++;

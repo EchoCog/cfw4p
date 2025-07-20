@@ -1246,7 +1246,7 @@ export class AARNetworkIntegration {
     );
 
     // Coherence is related to the concentration of self-representation
-    const entropy = this.calculateTensorEntropy(selfTensor.data);
+    const entropy = this.calculateTensorEntropy(new Float32Array(selfTensor.data));
     return Math.max(0, 1.0 - entropy); // Higher coherence = lower entropy
   }
 
