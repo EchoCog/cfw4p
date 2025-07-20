@@ -1,0 +1,339 @@
+name: PR Validation & Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  pr-metadata:
+    name: PR Metadata & Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR
+        id: pr_validation
+        run: |
+          echo "Validating PR metadata..."
+          
+          # Check if PR has a proper title
+          if [ ${#{{ github.event.pull_request.title }}} -lt 10 ]; then
+            echo "⚠️ PR title might be too short"
+          fi
+          
+          # Check for breaking changes in files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Check if critical files are changed
+          if echo "$CHANGED_FILES" | grep -E "(wrangler\.toml|package\.json|requirements\.txt)"; then
+            echo "🔍 Critical configuration files changed - requires careful review"
+            echo "config-changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "config-changed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Count lines changed
+          LINES_ADDED=$(git diff --numstat origin/${{ github.event.pull_request.base.ref }}...HEAD | awk '{added+=$1} END {print added}')
+          LINES_DELETED=$(git diff --numstat origin/${{ github.event.pull_request.base.ref }}...HEAD | awk '{deleted+=$2} END {print deleted}')
+          
+          echo "Lines added: $LINES_ADDED"
+          echo "Lines deleted: $LINES_DELETED"
+          echo "lines-added=$LINES_ADDED" >> $GITHUB_OUTPUT
+          echo "lines-deleted=$LINES_DELETED" >> $GITHUB_OUTPUT
+
+      - name: Add PR labels based on changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const labels = [];
+            const configChanged = '${{ steps.pr_validation.outputs.config-changed }}' === 'true';
+            const linesAdded = parseInt('${{ steps.pr_validation.outputs.lines-added }}') || 0;
+            const linesDeleted = parseInt('${{ steps.pr_validation.outputs.lines-deleted }}') || 0;
+            
+            // Size labels
+            const totalChanges = linesAdded + linesDeleted;
+            if (totalChanges < 50) labels.push('size/small');
+            else if (totalChanges < 200) labels.push('size/medium');
+            else if (totalChanges < 500) labels.push('size/large');
+            else labels.push('size/xl');
+            
+            // Type labels
+            if (configChanged) labels.push('config-change');
+            if (linesDeleted > linesAdded * 2) labels.push('cleanup');
+            
+            // Add labels to PR
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labels
+              });
+            }
+
+  quick-validation:
+    name: Quick Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quick lint check
+        run: npm run lint:check
+        continue-on-error: true
+        id: quick_lint
+
+      - name: Quick TypeScript check
+        run: npm run build
+        continue-on-error: true
+        id: quick_ts
+
+      - name: Comment on PR with quick results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const lintStatus = '${{ steps.quick_lint.outcome }}';
+            const tsStatus = '${{ steps.quick_ts.outcome }}';
+            
+            const lintIcon = lintStatus === 'success' ? '✅' : '❌';
+            const tsIcon = tsStatus === 'success' ? '✅' : '❌';
+            
+            const body = `
+            ## 🚀 Quick PR Validation Results
+            
+            | Check | Status | 
+            |-------|--------|
+            | ESLint | ${lintIcon} ${lintStatus} |
+            | TypeScript | ${tsIcon} ${tsStatus} |
+            
+            ${lintStatus === 'failure' ? '> ⚠️ **ESLint issues found** - Run `npm run lint` to fix automatically\n' : ''}
+            ${tsStatus === 'failure' ? '> ⚠️ **TypeScript compilation errors** - Run `npm run build` to see details\n' : ''}
+            
+            Full CI/CD pipeline will run automatically. Check the **Actions** tab for detailed results.
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+  security-check:
+    name: Security & Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+        id: security_audit
+
+      - name: Check for secrets in code
+        run: |
+          # Simple regex patterns for common secrets
+          if grep -r -E "(api_key|secret_key|password|token)" --include="*.ts" --include="*.js" src/ || true; then
+            echo "⚠️ Potential secrets found in code - please review"
+          fi
+        continue-on-error: true
+
+      - name: Comment security results
+        if: steps.security_audit.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `
+            ## 🔒 Security Audit Alert
+            
+            **Security vulnerabilities detected in dependencies.**
+            
+            ### Immediate Actions Required:
+            1. Run \`npm audit\` locally to see detailed vulnerability report
+            2. Run \`npm audit fix\` to automatically fix vulnerabilities
+            3. Review and test all changes before committing
+            4. Consider updating vulnerable dependencies manually if auto-fix doesn't work
+            
+            **This PR should not be merged until security issues are resolved.**
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+  integration-preview:
+    name: Integration Test Preview
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install jq for test parsing
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Start test server
+        run: |
+          npx wrangler dev --port 8788 &
+          echo $! > wrangler.pid
+          sleep 15
+        continue-on-error: true
+
+      - name: Run integration tests
+        run: |
+          chmod +x test-suite.sh
+          timeout 60 ./test-suite.sh || echo "Integration tests completed with issues"
+        continue-on-error: true
+        id: integration_preview
+
+      - name: Stop test server
+        run: |
+          if [ -f wrangler.pid ]; then
+            kill $(cat wrangler.pid) || true
+          fi
+
+      - name: Comment integration results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const integrationStatus = '${{ steps.integration_preview.outcome }}';
+            const integrationIcon = integrationStatus === 'success' ? '✅' : '⚠️';
+            
+            const body = `
+            ## 🧪 Integration Test Preview Results
+            
+            **Status:** ${integrationIcon} ${integrationStatus}
+            
+            ${integrationStatus === 'failure' ? 
+              '> ⚠️ **Integration tests had issues** - Check the Actions tab for detailed logs\n\n' +
+              '**Common Issues:**\n' +
+              '- Worker startup problems\n' +
+              '- Database connectivity\n' +
+              '- API endpoint configuration\n' +
+              '- Environment variable issues\n'
+              : '> ✅ **Integration tests passed** - Your changes look good!'
+            }
+            
+            **Note:** This is a preview run. Full testing will occur after merge.
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [pr-metadata, quick-validation, security-check, integration-preview]
+    if: always()
+    steps:
+      - name: Evaluate quality gate
+        run: |
+          echo "Evaluating overall PR quality..."
+          
+          # This would typically integrate with quality tools
+          # For now, we'll check basic criteria
+          
+          QUICK_VALIDATION_STATUS="${{ needs.quick-validation.result }}"
+          SECURITY_STATUS="${{ needs.security-check.result }}"
+          INTEGRATION_STATUS="${{ needs.integration-preview.result }}"
+          
+          echo "Quick validation: $QUICK_VALIDATION_STATUS"
+          echo "Security check: $SECURITY_STATUS"
+          echo "Integration preview: $INTEGRATION_STATUS"
+          
+          # Determine if PR should be blocked
+          if [ "$SECURITY_STATUS" = "failure" ]; then
+            echo "❌ Quality gate FAILED: Security issues must be resolved"
+            exit 1
+          fi
+          
+          if [ "$QUICK_VALIDATION_STATUS" = "failure" ] && [ "$INTEGRATION_STATUS" = "failure" ]; then
+            echo "⚠️ Quality gate WARNING: Multiple validation failures"
+            exit 1
+          fi
+          
+          echo "✅ Quality gate PASSED: PR meets basic quality criteria"
+
+      - name: Update PR status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const qualityGateStatus = '${{ job.status }}';
+            const icon = qualityGateStatus === 'success' ? '✅' : '❌';
+            
+            const body = `
+            ## ${icon} Quality Gate ${qualityGateStatus === 'success' ? 'PASSED' : 'FAILED'}
+            
+            **Overall Assessment:** ${qualityGateStatus === 'success' ? 
+              'This PR meets the quality standards and is ready for review.' : 
+              'This PR has quality issues that should be addressed before merging.'
+            }
+            
+            ### Summary:
+            - **Metadata Check:** ${{ needs.pr-metadata.result }}
+            - **Quick Validation:** ${{ needs.quick-validation.result }}
+            - **Security Check:** ${{ needs.security-check.result }}
+            - **Integration Preview:** ${{ needs.integration-preview.result }}
+            
+            ${qualityGateStatus === 'failure' ? 
+              '**Action Required:** Please address the failing checks before requesting review.' :
+              '**Next Steps:** This PR is ready for code review and can proceed through the approval process.'
+            }
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

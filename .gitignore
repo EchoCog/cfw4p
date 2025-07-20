@@ -6,3 +6,35 @@ dist/
 .DS_Store
 .vscode/
 .wrangler/
+
+# Build artifacts
+build/
+out/
+*.tsbuildinfo
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+coverage/
+.nyc_output/
+junit.xml
+outdated.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+wrangler.pid
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# NPM package lock conflicts
+package-lock.json.orig
+yarn.lock.orig

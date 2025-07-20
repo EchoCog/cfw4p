@@ -19,7 +19,11 @@
   "scripts": {
     "start": "wrangler dev",
     "deploy": "wrangler deploy",
-    "lint": "npx eslint ./src",
+    "build": "npx tsc --noEmit",
+    "lint": "npx eslint \"src/**/*.{ts,js}\" --fix",
+    "lint:check": "npx eslint \"src/**/*.{ts,js}\"",
+    "test": "bash test-suite.sh",
+    "test:unit": "echo 'Unit tests not yet implemented'",
     "format": "npx prettier --write '**/*.{ts,js,cjs,json}'"
   },
   "dependencies": {

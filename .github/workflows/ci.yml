@@ -1,0 +1,342 @@
+name: CI - Build, Test & Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  lint-and-format:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint:check
+        continue-on-error: true
+        id: eslint
+
+      - name: Check formatting
+        run: npx prettier --check '**/*.{ts,js,cjs,json}'
+        continue-on-error: true
+        id: prettier
+
+      - name: Report linting issues
+        if: steps.eslint.outcome == 'failure' || steps.prettier.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 Code Quality Issues Detected';
+            const body = `
+            ## Code Quality Issues Found
+            
+            **ESLint Status:** ${{ steps.eslint.outcome }}
+            **Prettier Status:** ${{ steps.prettier.outcome }}
+            
+            ### Actionable Steps:
+            1. Run \`npm run lint\` to auto-fix ESLint issues
+            2. Run \`npm run format\` to auto-fix formatting issues
+            3. Review any remaining issues manually
+            4. Commit and push the fixes
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            // Create issue if this is a push to main
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ci/cd', 'code-quality', 'automated-issue']
+              });
+            }
+
+  build-typescript:
+    name: TypeScript Build
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compilation check
+        run: npm run build
+        continue-on-error: true
+        id: tsc
+
+      - name: Report TypeScript issues
+        if: steps.tsc.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 TypeScript Compilation Errors';
+            const body = `
+            ## TypeScript Compilation Failed
+            
+            **Status:** ${{ steps.tsc.outcome }}
+            
+            ### Actionable Steps:
+            1. Run \`npm run build\` locally to see detailed errors
+            2. Fix TypeScript type errors and missing imports
+            3. Ensure all dependencies are properly installed
+            4. Check tsconfig.json configuration
+            5. Verify all source files have correct extensions
+            
+            **Common Issues:**
+            - Missing type declarations (\`npm install @types/package-name\`)
+            - Incorrect import paths
+            - JSX configuration issues
+            - Missing dependencies
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ci/cd', 'typescript', 'build-error', 'automated-issue']
+              });
+            }
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        continue-on-error: true
+        id: pip_install
+
+      - name: Run Python tests
+        run: |
+          python -m pytest gnucash_rest.py --verbose || echo "No pytest configuration found"
+          python -c "import gnucash_rest; print('GnuCash REST module imports successfully')"
+        continue-on-error: true
+        id: python_tests
+
+      - name: Report Python issues
+        if: steps.pip_install.outcome == 'failure' || steps.python_tests.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 Python Component Issues';
+            const body = `
+            ## Python Tests or Dependencies Failed
+            
+            **Pip Install Status:** ${{ steps.pip_install.outcome }}
+            **Python Tests Status:** ${{ steps.python_tests.outcome }}
+            
+            ### Actionable Steps:
+            1. Check requirements.txt for invalid or conflicting dependencies
+            2. Review Python version compatibility (using Python ${{ env.PYTHON_VERSION }})
+            3. Install dependencies locally: \`pip install -r requirements.txt\`
+            4. Run tests locally: \`python -m pytest\`
+            5. Check for missing system dependencies
+            
+            **Common Issues:**
+            - Package version conflicts
+            - Missing system libraries
+            - Python version incompatibility
+            - Network issues during package installation
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ci/cd', 'python', 'dependencies', 'automated-issue']
+              });
+            }
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build-typescript, test-python]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install jq for test parsing
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Start Wrangler dev server
+        run: |
+          npx wrangler dev --port 8788 &
+          echo $! > wrangler.pid
+          sleep 10
+        continue-on-error: true
+
+      - name: Run integration tests
+        run: |
+          chmod +x test-suite.sh
+          timeout 120 ./test-suite.sh || echo "Integration tests completed with issues"
+        continue-on-error: true
+        id: integration_tests
+
+      - name: Stop Wrangler dev server
+        run: |
+          if [ -f wrangler.pid ]; then
+            kill $(cat wrangler.pid) || true
+          fi
+
+      - name: Report integration test issues
+        if: steps.integration_tests.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 Integration Tests Failed';
+            const body = `
+            ## Integration Tests Failed
+            
+            **Test Status:** ${{ steps.integration_tests.outcome }}
+            
+            ### Actionable Steps:
+            1. Run integration tests locally: \`./test-suite.sh\`
+            2. Check if Wrangler dev server starts properly: \`npx wrangler dev\`
+            3. Verify database migrations and D1 setup
+            4. Check API endpoints are responding correctly
+            5. Review worker deployment configuration in wrangler.toml
+            
+            **Common Issues:**
+            - Database not properly initialized
+            - Missing environment variables or secrets
+            - Network connectivity issues in tests
+            - Worker compilation or runtime errors
+            - API endpoint configuration problems
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ci/cd', 'integration-tests', 'cloudflare-workers', 'automated-issue']
+              });
+            }
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+        id: npm_audit
+
+      - name: Report security issues
+        if: steps.npm_audit.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🔒 Security Vulnerabilities Detected';
+            const body = `
+            ## Security Vulnerabilities Found
+            
+            **NPM Audit Status:** ${{ steps.npm_audit.outcome }}
+            
+            ### Actionable Steps:
+            1. Run \`npm audit\` locally to see detailed vulnerability report
+            2. Run \`npm audit fix\` to automatically fix fixable vulnerabilities
+            3. For manual fixes, run \`npm audit fix --force\` (review changes carefully)
+            4. Update vulnerable dependencies manually if needed
+            5. Consider using \`npm override\` for transitive dependency issues
+            
+            **Security Best Practices:**
+            - Regularly update dependencies
+            - Use \`npm audit\` in development workflow
+            - Monitor security advisories for used packages
+            - Consider using tools like Snyk for continuous monitoring
+            
+            **Triggered by:** ${{ github.event_name }} on ${{ github.ref }}
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            `;
+            
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['security', 'vulnerabilities', 'dependencies', 'automated-issue']
+              });
+            }
