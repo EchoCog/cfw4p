@@ -47,4 +47,5 @@ class MicroserviceDemo:
         
         # Create load balancer with circuit breaker
         lb_config = LoadBalancingConfig(
-            strategy="round_robin",
+            strategy="round_robin"
+        )
