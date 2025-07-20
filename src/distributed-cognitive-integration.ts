@@ -620,7 +620,7 @@ export class DistributedCognitiveIntegration {
         testName: "Tensor Operations Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -661,12 +661,14 @@ export class DistributedCognitiveIntegration {
           currencies: ["USD"],
           entityTypes: ["account"],
           transactionTypes: ["transfer"],
+          riskCategories: ["low", "medium"],
+          complianceFrameworks: ["SOX", "PCI"],
         },
         networkRole: {
-          primary: "analysis",
-          secondary: ["monitoring"],
+          hierarchyLevel: 1,
+          coordinationResponsibilities: ["analysis", "monitoring"],
           consensusWeight: 0.8,
-          emergenceCapacity: 0.7,
+          emergenceDetectionCapability: true,
           memoryConsolidationRole: true,
         },
       };
@@ -709,7 +711,7 @@ export class DistributedCognitiveIntegration {
         testName: "Worker Nodes Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -774,7 +776,7 @@ export class DistributedCognitiveIntegration {
         testName: "Network Coordination Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -824,7 +826,7 @@ export class DistributedCognitiveIntegration {
         testName: "AAR Integration Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -893,7 +895,7 @@ export class DistributedCognitiveIntegration {
 
       const hasResponse = response !== null;
       const meetsQuality =
-        hasResponse && response.qualityMetrics.accuracy >= 0.7;
+        hasResponse && response && response.qualityMetrics.accuracy >= 0.7;
 
       return {
         testId: "end_to_end_processing",
@@ -907,7 +909,7 @@ export class DistributedCognitiveIntegration {
           recall: response?.qualityMetrics.recall || 0,
           f1Score: response?.qualityMetrics.f1Score || 0,
           responseTime: response?.processingTime || Date.now() - startTime,
-          throughput: hasResponse ? 1000 / (response.processingTime || 1) : 0,
+          throughput: hasResponse && response ? 1000 / (response.processingTime || 1) : 0,
           errorRate: hasResponse ? 0.1 : 1,
           cognitiveCoherence: hasResponse ? 0.8 : 0,
         },
@@ -918,7 +920,7 @@ export class DistributedCognitiveIntegration {
         testName: "End-to-End Processing Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1016,7 +1018,7 @@ export class DistributedCognitiveIntegration {
         testName: "Network Emergence Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1113,7 +1115,7 @@ export class DistributedCognitiveIntegration {
         testName: "Distributed Cognition Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1199,7 +1201,7 @@ export class DistributedCognitiveIntegration {
         testName: "Consciousness Emergence Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1273,7 +1275,7 @@ export class DistributedCognitiveIntegration {
           recall: response?.qualityMetrics.recall || 0,
           f1Score: response?.qualityMetrics.f1Score || 0,
           responseTime: response?.processingTime || Date.now() - startTime,
-          throughput: hasCreativeResponse
+          throughput: hasCreativeResponse && response
             ? 1000 / (response.processingTime || 1)
             : 0,
           errorRate: hasCreativeResponse ? 0.2 : 0.8,
@@ -1299,7 +1301,7 @@ export class DistributedCognitiveIntegration {
         testName: "Creative Problem Solving Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1406,7 +1408,7 @@ export class DistributedCognitiveIntegration {
         testName: "Adaptive Intelligence Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1484,7 +1486,7 @@ export class DistributedCognitiveIntegration {
       const successfulResponses = responses.filter((r) => r !== null);
       const successRate = successfulResponses.length / concurrentRequests;
       const avgResponseTime =
-        successfulResponses.reduce((sum, r) => sum + r.processingTime, 0) /
+        successfulResponses.reduce((sum, r) => sum + (r?.processingTime || 0), 0) /
         successfulResponses.length;
 
       const passesLoad = successRate > 0.8 && avgResponseTime < 10000;
@@ -1517,7 +1519,7 @@ export class DistributedCognitiveIntegration {
         testName: "Concurrent Requests Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1585,7 +1587,7 @@ export class DistributedCognitiveIntegration {
         const successfulResponses = responses.filter((r) => r !== null);
         const successRate = successfulResponses.length / loadLevel;
         const avgResponseTime =
-          successfulResponses.reduce((sum, r) => sum + r.processingTime, 0) /
+          successfulResponses.reduce((sum, r) => sum + (r?.processingTime || 0), 0) /
           Math.max(1, successfulResponses.length);
         const throughput = loadLevel / ((Date.now() - levelStartTime) / 1000);
 
@@ -1631,7 +1633,7 @@ export class DistributedCognitiveIntegration {
         testName: "Scaling Behavior Test",
         status: "error",
         duration: Date.now() - startTime,
-        results: { error: error.message },
+        results: { error: error instanceof Error ? error.message : String(error) },
         metrics: {
           accuracy: 0,
           precision: 0,
@@ -1779,7 +1781,7 @@ export default {
         return new Response('Distributed Cognitive Network API', { status: 200 });
       }
     } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });

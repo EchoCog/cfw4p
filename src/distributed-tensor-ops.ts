@@ -233,23 +233,18 @@ export class DistributedTensorOperations {
     const id = `tensor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     return {
-      id,
       shape: { 
         dims: shape, 
         size,
         dimensions: shape,
         totalSize: size
       },
-      data: new Float32Array(size),
-      type: "f32",
-      metadata: {},
-      semanticEmbedding: new Float32Array(Math.min(512, size)),
-      grammarRules: rules,
-      attentionWeights: new Float32Array(shape[0] || 1),
-      contextualState: {
-        temporalWindow: 64,
-        semanticDepth: 8,
-        grammarComplexity: rules.length,
+      data: Array.from(new Float32Array(size)),
+      dtype: "float32",
+      cognitiveMetadata: {
+        attentionWeights: Array.from(new Float32Array(shape[0] || 1)),
+        semanticTags: [],
+        emergentProperties: {},
       },
     };
   }
@@ -478,7 +473,7 @@ export class DistributedTensorOperations {
 
     while (currentLevel.parentLevel) {
       const levelResults = await Promise.all(
-        currentLevel.nodes.map((node) => this.computeHierarchicalNode(node)),
+        currentLevel.nodes.map((node: any) => this.computeHierarchicalNode(node)),
       );
 
       currentLevel = currentLevel.parentLevel;
@@ -981,6 +976,15 @@ class CryptographicEngine {
   // Missing methods for compatibility
   createTensor(data: number[], shape: number[]): DistributedTensor {
     const size = shape.reduce((a, b) => a * b, 1);
+    const defaultLocation: EdgeLocation = {
+      region: "default",
+      datacenter: "default", 
+      coordinates: [0, 0],
+      capacity: 100,
+      currentLoad: 0,
+      networkLatency: new Map(),
+    };
+    
     return {
       data: data,
       shape: {
@@ -996,14 +1000,7 @@ class CryptographicEngine {
         emergentProperties: {},
       },
       workerId: `worker_${Date.now()}`,
-      location: Array.from(this.networkTopology.values())[0] || {
-        region: "default",
-        datacenter: "default",
-        coordinates: [0, 0],
-        capacity: 100,
-        currentLoad: 0,
-        networkLatency: new Map(),
-      },
+      location: defaultLocation,
       timestamp: new Date(),
       consensusHash: "",
       replicationFactor: 1,

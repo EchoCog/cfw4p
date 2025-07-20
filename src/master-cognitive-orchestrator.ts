@@ -757,7 +757,7 @@ export class MasterCognitiveOrchestrator {
       anomaly_detection: ["risk_assessor", "pattern_detector"],
     };
 
-    if (primaryRoles[requestType]?.includes(workerType)) {
+    if ((primaryRoles as any)[requestType]?.includes(workerType)) {
       return "primary";
     } else if (workerType === "compliance_monitor") {
       return "validator";
@@ -789,7 +789,7 @@ export class MasterCognitiveOrchestrator {
           result: null,
           processingTime: 0,
           success: false,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         };
       }
     });
@@ -995,12 +995,12 @@ export class MasterCognitiveOrchestrator {
 
   private mapImpactToSeverity(impact: string): number {
     const severityMap = { low: 0.2, medium: 0.5, high: 0.8, critical: 1.0 };
-    return severityMap[impact] || 0.5;
+    return (severityMap as any)[impact] || 0.5;
   }
 
   private mapImpactToRisk(impact: string): number {
     const riskMap = { low: 0.2, medium: 0.5, high: 0.8, critical: 1.0 };
-    return riskMap[impact] || 0.5;
+    return (riskMap as any)[impact] || 0.5;
   }
 
   private calculateRiskDistribution(insights: any[]): any {
@@ -1008,7 +1008,7 @@ export class MasterCognitiveOrchestrator {
 
     insights.forEach((insight) => {
       const impact = insight.impact || "medium";
-      distribution[impact]++;
+      (distribution as any)[impact]++;
     });
 
     return distribution;
