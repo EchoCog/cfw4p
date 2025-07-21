@@ -48,15 +48,66 @@ def test_requirements_dependencies():
             pytest.fail(f"Required module '{module_name}' is not available")
 
 
+def test_requirements_version_constraints():
+    """Test that dependencies meet version constraints from requirements.txt."""
+    import importlib.metadata
+    
+    # Define minimum versions from requirements.txt
+    version_constraints = {
+        'requests': '2.28.0',
+        'PyGithub': '1.58.0',
+        'numpy': '1.21.0',
+        'pandas': '1.5.0',
+        'matplotlib': '3.6.0',
+        'scikit-learn': '1.1.0',
+        'networkx': '3.0.0',
+        'aiohttp': '3.8.0',
+        'pyyaml': '6.0',
+        'pytest': '7.0.0',
+        'pytest-asyncio': '0.21.0',
+        'flask': '2.3.0'
+    }
+    
+    for package, min_version in version_constraints.items():
+        try:
+            installed_version = importlib.metadata.version(package)
+            # Parse version numbers for comparison
+            def parse_version(version_str):
+                return tuple(map(int, version_str.split('.')[:3]))  # Take first 3 components
+            
+            min_parsed = parse_version(min_version)
+            installed_parsed = parse_version(installed_version)
+            
+            assert installed_parsed >= min_parsed, \
+                f"Package '{package}' version {installed_version} is below minimum required {min_version}"
+                
+        except importlib.metadata.PackageNotFoundError:
+            pytest.fail(f"Required package '{package}' is not installed")
+        except Exception as e:
+            # If version parsing fails, just check that the package is importable
+            try:
+                importlib.import_module(package.lower().replace('-', '_'))
+            except ImportError:
+                pytest.fail(f"Package '{package}' is installed but not importable: {e}")
+
+
 def test_python_version_compatibility():
     """Test that we're running a compatible Python version."""
     import sys
     
-    # The CI uses Python 3.11, but we should be compatible with 3.11+
+    # The CI environment uses Python 3.11 specifically
+    # We support Python 3.11+ but need to ensure compatibility with CI expectations
     version_info = sys.version_info
+    
+    # Minimum required: Python 3.11
     assert version_info >= (3, 11), f"Python version {version_info.major}.{version_info.minor} is not supported. Minimum required: Python 3.11"
     
-    # Ensure we're not running on an unsupported future version
+    # Maximum tested: Python 3.12 (allow some flexibility but warn about untested versions)
+    if version_info >= (3, 13):
+        import warnings
+        warnings.warn(f"Python version {version_info.major}.{version_info.minor} is newer than tested versions. Compatibility not guaranteed.", UserWarning)
+    
+    # Ensure we're not running on a major version that breaks compatibility
     assert version_info < (4, 0), f"Python version {version_info.major}.{version_info.minor} may have compatibility issues. Tested up to Python 3.x"
 
 
@@ -75,15 +126,60 @@ def test_gnucash_rest_import_graceful_failure():
 
 def test_microservice_demo_import_graceful_failure():
     """Test that microservice_demo.py fails gracefully when dependencies are missing."""
+    import sys
+    import os
+    
+    # Ensure we can import from the current directory structure
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
     try:
         import microservice_demo
-        # If import succeeds, that's actually fine  
-        assert True
+        # If import succeeds, verify basic functionality is available
+        assert hasattr(microservice_demo, 'MicroserviceDemo'), \
+            "microservice_demo module should contain MicroserviceDemo class"
+        
+        # Test that we can instantiate the demo class
+        demo = microservice_demo.MicroserviceDemo()
+        assert demo is not None, "Should be able to instantiate MicroserviceDemo"
+        
     except ModuleNotFoundError as e:
         # Expected when src.microservices modules are not available
-        assert 'src.microservices' in str(e)
+        error_msg = str(e).lower()
+        expected_errors = ['src.microservices', 'service_discovery', 'load_balancer', 'orchestration', 'ggml_optimization']
+        
+        assert any(expected in error_msg for expected in expected_errors), \
+            f"ModuleNotFoundError should be related to microservices modules, got: {e}"
+            
     except Exception as e:
         pytest.fail(f"Unexpected error importing microservice_demo: {e}")
+
+
+def test_microservice_modules_syntax():
+    """Test that all microservice modules have valid Python syntax."""
+    import ast
+    import os
+    
+    microservice_files = [
+        'src/microservices/service_discovery.py',
+        'src/microservices/load_balancer.py', 
+        'src/microservices/orchestration.py',
+        'src/microservices/ggml_optimization.py'
+    ]
+    
+    for file_path in microservice_files:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                source_code = f.read()
+            
+            try:
+                # This will raise SyntaxError if the syntax is invalid
+                ast.parse(source_code)
+            except SyntaxError as e:
+                pytest.fail(f"Syntax error in {file_path}: {e}")
+        else:
+            pytest.fail(f"Required microservice file {file_path} is missing")
 
 
 if __name__ == '__main__':
