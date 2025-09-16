@@ -28,6 +28,6 @@
   },
   "dependencies": {
     "hono": "^4.9.6",
-    "workers-qb": "^1.10.2"
+    "workers-qb": "^1.11.2"
   }
 }
