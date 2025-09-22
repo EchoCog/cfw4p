@@ -27,7 +27,7 @@
     "format": "npx prettier --write '**/*.{ts,js,cjs,json}'"
   },
   "dependencies": {
-    "hono": "^4.9.7",
+    "hono": "^4.9.8",
     "workers-qb": "^1.11.2"
   }
 }
