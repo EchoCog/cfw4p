@@ -12,7 +12,7 @@
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "better-sqlite3": "^12.2.0",
-    "eslint": "^9.35.0",
+    "eslint": "^9.36.0",
     "typescript": "^5.9.2",
     "wrangler": "^4.37.0"
   },
