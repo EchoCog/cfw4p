@@ -14,7 +14,7 @@
     "better-sqlite3": "^12.2.0",
     "eslint": "^9.35.0",
     "typescript": "^5.9.2",
-    "wrangler": "^4.37.0"
+    "wrangler": "^4.38.0"
   },
   "scripts": {
     "start": "wrangler dev",
